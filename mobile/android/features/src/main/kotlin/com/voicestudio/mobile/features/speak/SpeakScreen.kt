@@ -14,6 +14,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalContext
 import com.voicestudio.mobile.local.BookExport
 import com.voicestudio.mobile.local.PhoneModel
+import com.voicestudio.mobile.local.phoneDiagClear
+import com.voicestudio.mobile.local.phoneDiagLog
 import com.voicestudio.mobile.features.*
 import java.io.File
 import kotlinx.coroutines.*
@@ -139,6 +141,7 @@ internal fun chooseSpeakModel(models: List<PhoneModel>,installed: Set<String>,ch
             val languageChoices=if(voice!=null) listOf(Choice("auto",tr("languagePicker.auto"))) else selected?.languages.orEmpty().map {Choice(it,languageName(it,LocalL10n.current.locale))}
             Screen(bottomBar={
                 Action("mobile.speak.generate",text.isNotBlank()&&selected!=null&&phone.canRun(selected,vm.phone.ramBytes)&&validSpeaker&&phone.progress==null&&!exporting) {
+                    phoneDiagClear()
                     vm.phone.speak(selected!!,text,speaker.toIntOrNull() ?: 0,voice,language.takeUnless {it=="auto"})
                 }
             }) {
@@ -154,8 +157,17 @@ internal fun chooseSpeakModel(models: List<PhoneModel>,installed: Set<String>,ch
                 if(selected?.let {!phone.canRun(it,vm.phone.ramBytes)}!=false) selected?.let {com.voicestudio.mobile.features.models.MissingModelsCard(vm,"mobile.tabs.speak",listOf(it))}
                 phone.progress?.let {p ->
                     LinearProgressIndicator(progress={p},modifier=Modifier.fillMaxWidth())
+                    Text("DIAG ${(p*100).toInt()}%",style=MaterialTheme.typography.labelSmall,color=role("textMuted"))
                     Secondary("common.cancel") {vm.phone.cancelInference()}
                 }
+                var vsDiagLog by remember {mutableStateOf<String?>(null)}
+                LaunchedEffect(phone.progress) {
+                    while(phone.progress!=null) {
+                        vsDiagLog=phoneDiagLog()?.trim()?.lines()?.lastOrNull {it.isNotBlank()}
+                        delay(400)
+                    }
+                }
+                phone.progress?.let {vsDiagLog?.let {line->Text("DIAG log: "+line,style=MaterialTheme.typography.labelSmall,color=role("textMuted"),maxLines=3)}}
                 phone.audio?.let {file ->
                     LocalAudioPlayer(file,vm::fail)
                     ChoicePicker("audiobook.format",exportFormat,listOf(Choice("wav","WAV"),Choice("m4a","AAC / M4A"),Choice("mp3","MP3"))) {exportFormat=it}
