@@ -93,9 +93,22 @@ import java.io.File
             Secondary("common.stop") {try {sample=recorder.stop().absolutePath;recording=false} catch(e:Exception) {recording=false;sample=null;vm.fail(e)}}
         } else Secondary("mobile.voices.record",onClick=record)
         if(sample!=null&&!recording) Text(tr("mobile.android.sample_ready"))
+        phone.progress?.let {p ->
+            val phase=when {p<.25f->"siapkan audio";p<.5f->"transkripsi";else->"pratinjau OmniVoice"}
+            LinearProgressIndicator(progress={p},modifier=Modifier.fillMaxWidth())
+            Text("DIAG fase: $phase — ${(p*100).toInt()}%",style=MaterialTheme.typography.labelSmall,color=role("textMuted"))
+        }
+        var vsDiagLog by remember {mutableStateOf<String?>(null)}
+        LaunchedEffect(phone.progress) {
+            while(phone.progress!=null) {
+                vsDiagLog=phoneDiagLog()?.trim()?.lines()?.lastOrNull {it.isNotBlank()}
+                delay(400)
+            }
+        }
+        phone.progress?.let {vsDiagLog?.let {line->Text("DIAG log: "+line,style=MaterialTheme.typography.labelSmall,color=role("textMuted"),maxLines=3)}}
         Action("mobile.voices.new_clone",permission&&sample!=null&&name.isNotBlank()&&!state.busy&&!recording&&phone.progress==null&&(location==RunLocation.COMPUTER||cloneReady)) {
             if(location==RunLocation.COMPUTER) {vm.clone(name,File(sample!!));sample=null;name="";permission=false;cloning=false}
-            else vm.phone.clone(name,File(sample!!),asr!!,model!!,permission) {sample=null;name="";permission=false;cloning=false}
+            else {phoneDiagClear();vm.phone.clone(name,File(sample!!),asr!!,model!!,permission) {sample=null;name="";permission=false;cloning=false}}
         }
         Secondary("common.cancel",!recording) {vm.phone.cancelInference();cloning=false;sample?.let {File(it).delete()};sample=null}
         }

@@ -1,0 +1,48 @@
+# Diagnostic debug build (fork of debpalash/VoiceStudio).
+# Builds the Android debug APK with the clone-run probe patches and uploads it.
+name: diag-build
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: mobile/android
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: SDK location
+        run: printf 'sdk.dir=%s\n' "$ANDROID_HOME" > local.properties
+
+      - name: NDK and CMake
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;27.1.12297006" "cmake;3.22.1" > /dev/null
+
+      - name: Cache native runtimes
+        uses: actions/cache@v4
+        with:
+          path: mobile/native/android/build
+          key: diag-native-${{ hashFiles('mobile/native/pins.json', 'mobile/native/android/**', 'mobile/native/mp3/**') }}
+
+      - name: Build debug APK
+        run: ./gradlew --no-daemon assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: VoiceStudio-diag-apk
+          path: mobile/android/app/build/outputs/apk/debug/*.apk
+          retention-days: 14

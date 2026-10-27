@@ -41,7 +41,14 @@ internal object NativeBridge {
     external fun designAudio(model: String,codec: String,text: String,instruction: String,seed: Long,control: NativeControl): FloatArray?
     external fun cloneAudio(model: String, codec: String, text: String, referenceText: String, reference: FloatArray, control: NativeControl): FloatArray?
     external fun translateText(model: String, prompt: String, formatted: Boolean, control: NativeControl): ByteArray?
+    external fun diagLog(): String?
+    external fun diagClear()
 }
+
+/** DIAG fork build: last captured native log lines (null when the runtime is not loaded). */
+fun phoneDiagLog(): String? = try {NativeBridge.diagLog()} catch (_:Throwable) {null}
+/** DIAG fork build: clear the captured native log. */
+fun phoneDiagClear() {try {NativeBridge.diagClear()} catch (_:Throwable) {}}
 
 class PhoneLocalEngine(private val models: ModelDownloads): LocalEngine {
     companion object {private val nativeLease=Mutex()}
