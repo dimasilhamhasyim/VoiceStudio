@@ -51,6 +51,15 @@ android {
     // DIAG fork build: installable next to the store-signed app.
     buildTypes.getByName("debug").applicationIdSuffix = ".diag"
     buildTypes.getByName("debug").versionNameSuffix = "-diag"
+    // Pinned debug key so successive diag builds install over each other
+    // (keeps downloaded models). Throwaway key; never used for releases.
+    signingConfigs.create("diagDebug") {
+        storeFile = file("diag.keystore")
+        storePassword = "diagbuild"
+        keyAlias = "diag"
+        keyPassword = "diagbuild"
+    }
+    buildTypes.getByName("debug").signingConfig = signingConfigs.getByName("diagDebug")
     buildFeatures { compose = true; buildConfig = true }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     testOptions { unitTests.isIncludeAndroidResources = true }
