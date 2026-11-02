@@ -23,9 +23,24 @@ export function SaveAudioButton({
   const bridge = getBridge();
 
   const save = async () => {
-    if (!url || !bridge) return;
+    if (!url) return;
     setSaving(true);
     try {
+      if (!bridge) {
+        // Browser tab (web build, Colab tunnel): there is no native save
+        // dialog to call, so hand the file to the browser's own downloader.
+        // The URL is same-origin in a web deployment, so `download` keeps the
+        // suggested name; a cross-origin one still downloads, just under the
+        // server's filename.
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = suggestedName;
+        link.rel = 'noopener';
+        document.body.append(link);
+        link.click();
+        link.remove();
+        return;
+      }
       const saved = await saveExport(url, suggestedName);
       if (!saved) return;
       if (!saved.canceled && saved.path) {
@@ -56,7 +71,7 @@ export function SaveAudioButton({
       aria-label={iconOnly ? t('clone.download') : undefined}
       title={iconOnly ? t('clone.download') : undefined}
       onClick={() => void save()}
-      disabled={disabled || saving || !url || !bridge}
+      disabled={disabled || saving || !url}
     >
       <DownloadIcon />
       {iconOnly ? null : t('clone.download')}
